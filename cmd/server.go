@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"net"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,12 +19,20 @@ import (
 	n "github.com/AdrianoKF/go-clip/pkg/net"
 )
 
+var hostname, _ = os.Hostname()
+
 func PrintMessage(_ *net.UDPAddr, _ int, buf []byte) {
 	var ev model.ClipboardUpdated
 	err := json.NewDecoder(bytes.NewReader(buf)).Decode(&ev)
 	if err != nil {
 		util.Logger.Error(err)
 	}
+
+	if ev.Source == hostname {
+		util.Logger.Info("Ignoring event from myself")
+		return
+	}
+
 	if strings.HasPrefix(ev.ContentType, "text/") {
 		util.Logger.Info(string(ev.Content))
 		clipboard.Write(clipboard.FmtText, ev.Content)
@@ -44,12 +53,13 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		port, _ := cmd.Flags().GetInt("port")
 		addr := net.UDPAddr{
 			IP:   net.IPv4(239, 255, 90, 90),
-			Port: 9090,
+			Port: port,
 		}
 		server := n.NewServer(addr, PrintMessage)
-		util.Logger.Info("Starting server: %+v", server)
+		util.Logger.Infof("Starting server, address=%s:%d, hostname=%s", addr.IP, addr.Port, hostname)
 		server.Listen()
 	},
 }

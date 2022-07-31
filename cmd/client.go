@@ -8,6 +8,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/AdrianoKF/go-clip/internal/util"
 	"github.com/AdrianoKF/go-clip/pkg/model"
@@ -27,21 +28,25 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		util.Logger.Info("client starting")
+		hostname, _ := os.Hostname()
+		port, _ := cmd.Flags().GetInt("port")
+
+		util.Logger.Infof("client starting, port=%d, hostname=%s", port, hostname)
 
 		addr := net.UDPAddr{
 			IP:   net.IPv4(239, 255, 90, 90),
-			Port: 9090,
+			Port: port,
 		}
 		client := n.NewClient(addr, nil)
 
 		util.Logger.Info("Watching for clipboard events")
 		ch := clipboard.Watch(context.TODO(), clipboard.FmtText)
 		for data := range ch {
-			util.Logger.Info("Received clipboard event: ", data)
+			util.Logger.Info("Received clipboard event: ", string(data))
 			bytes := []byte(data)
 
 			client.SendEvent(model.ClipboardUpdated{
+				Source:      hostname,
 				Content:     bytes,
 				ContentType: http.DetectContentType(bytes),
 			})
@@ -51,14 +56,4 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(clientCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// clientCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// clientCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

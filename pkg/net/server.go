@@ -1,6 +1,7 @@
 package net
 
 import (
+	"crypto/cipher"
 	"net"
 
 	"github.com/AdrianoKF/go-clip/internal/util"
@@ -9,12 +10,18 @@ import (
 type Server struct {
 	addr    net.UDPAddr
 	Handler HandlerFunc
+	cipher  cipher.AEAD
 }
 
 func NewServer(addr net.UDPAddr, handler HandlerFunc) *Server {
+	cipher, err := util.MakeGCMCipher([]byte("secretkey"))
+	if err != nil {
+		util.Logger.Panic(err)
+	}
 	instance := &Server{
 		addr,
 		handler,
+		cipher,
 	}
 	return instance
 }
@@ -34,10 +41,18 @@ func (s Server) Listen() {
 			util.Logger.Error("Error reading from UDP", err)
 			return
 		}
-		util.Logger.Info("Received UDP packet from ", addr, " with ", n, " bytes")
+		util.Logger.Debug("Received UDP packet from ", addr, " with ", n, " bytes")
 
 		if s.Handler != nil {
-			go s.Handler(addr, n, buf)
+			nonceLen := s.cipher.NonceSize()
+			plaintext, err := s.cipher.Open(nil, buf[:nonceLen], buf[nonceLen:n], nil)
+			if err != nil {
+				util.Logger.Error(err)
+				continue
+			}
+			util.Logger.Debug("Decrypted event data:", string(plaintext))
+
+			go s.Handler(addr, n, plaintext)
 		}
 	}
 }

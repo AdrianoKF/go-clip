@@ -1,6 +1,10 @@
 package util
 
 import (
+	"crypto"
+	"crypto/aes"
+	"crypto/cipher"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -21,4 +25,18 @@ func InitializeLogging(development bool) {
 		panic(err)
 	}
 	Logger = l.Sugar()
+}
+
+func MakeGCMCipher(key []byte) (cipher.AEAD, error) {
+	sha256 := crypto.SHA256.New()
+	sha256.Write(key)
+	c, err := aes.NewCipher(sha256.Sum(nil))
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+	return gcm, nil
 }

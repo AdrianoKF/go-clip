@@ -2,21 +2,32 @@ package net
 
 import (
 	"bytes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/json"
+	"io"
 	"net"
 
+	"github.com/AdrianoKF/go-clip/internal/util"
 	"github.com/AdrianoKF/go-clip/pkg/model"
 )
 
 type Client struct {
 	addr    net.UDPAddr
 	handler HandlerFunc
+	cipher  cipher.AEAD
 }
 
 func NewClient(addr net.UDPAddr, handler HandlerFunc) *Client {
+	gcm, err := util.MakeGCMCipher([]byte("secretkey"))
+	if err != nil {
+		util.Logger.Panic(err)
+	}
+
 	instance := &Client{
 		addr,
 		handler,
+		gcm,
 	}
 	return instance
 }
@@ -33,7 +44,14 @@ func (c Client) SendEvent(msg model.ClipboardUpdated) error {
 	encoder := json.NewEncoder(w)
 	encoder.Encode(msg)
 
-	_, err = conn.Write(w.Bytes())
+	nonce := make([]byte, c.cipher.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		util.Logger.Panic(err)
+	}
+
+	ciphertext := c.cipher.Seal(nil, nonce, w.Bytes(), nil)
+
+	_, err = conn.Write(append(nonce, ciphertext...))
 	if err != nil {
 		return err
 	}
