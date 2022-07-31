@@ -3,6 +3,7 @@ package net
 import (
 	"crypto/cipher"
 	"net"
+	"strings"
 
 	"github.com/AdrianoKF/go-clip/internal/util"
 )
@@ -65,7 +66,7 @@ func (s Server) Listen() {
 				plaintext = buf[:n]
 			}
 
-			util.Logger.Debug("Decrypted event data:", string(plaintext))
+			util.Logger.Debug("Decrypted event data: ", strings.TrimSpace(string(plaintext)))
 
 			go s.Handler(addr, n, plaintext)
 		}
