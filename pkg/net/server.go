@@ -13,11 +13,19 @@ type Server struct {
 	cipher  cipher.AEAD
 }
 
-func NewServer(addr net.UDPAddr, handler HandlerFunc) *Server {
-	cipher, err := util.MakeGCMCipher([]byte("secretkey"))
-	if err != nil {
-		util.Logger.Panic(err)
+func NewServer(addr net.UDPAddr, encKey string, handler HandlerFunc) *Server {
+	var cipher cipher.AEAD = nil
+
+	if encKey != "" {
+		var err error
+		cipher, err = util.MakeGCMCipher([]byte(encKey))
+		if err != nil {
+			util.Logger.Panic(err)
+		}
+	} else {
+		util.Logger.Warn("Using unencrypted connection")
 	}
+
 	instance := &Server{
 		addr,
 		handler,
@@ -44,12 +52,19 @@ func (s Server) Listen() {
 		util.Logger.Debug("Received UDP packet from ", addr, " with ", n, " bytes")
 
 		if s.Handler != nil {
-			nonceLen := s.cipher.NonceSize()
-			plaintext, err := s.cipher.Open(nil, buf[:nonceLen], buf[nonceLen:n], nil)
-			if err != nil {
-				util.Logger.Error(err)
-				continue
+			var plaintext []byte
+			if s.cipher != nil {
+				var err error
+				nonceLen := s.cipher.NonceSize()
+				plaintext, err = s.cipher.Open(nil, buf[:nonceLen], buf[nonceLen:n], nil)
+				if err != nil {
+					util.Logger.Error(err)
+					continue
+				}
+			} else {
+				plaintext = buf[:n]
 			}
+
 			util.Logger.Debug("Decrypted event data:", string(plaintext))
 
 			go s.Handler(addr, n, plaintext)

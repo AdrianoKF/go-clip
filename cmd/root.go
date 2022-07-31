@@ -36,4 +36,5 @@ func Execute() {
 func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.PersistentFlags().IntP("port", "p", 9090, "port to listen on")
+	rootCmd.PersistentFlags().String("secret", "", "secret key for encryption / message authentication")
 }

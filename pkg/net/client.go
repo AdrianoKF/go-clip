@@ -18,16 +18,22 @@ type Client struct {
 	cipher  cipher.AEAD
 }
 
-func NewClient(addr net.UDPAddr, handler HandlerFunc) *Client {
-	gcm, err := util.MakeGCMCipher([]byte("secretkey"))
-	if err != nil {
-		util.Logger.Panic(err)
+func NewClient(addr net.UDPAddr, encKey string, handler HandlerFunc) *Client {
+	var cipher cipher.AEAD = nil
+	if encKey != "" {
+		var err error
+		cipher, err = util.MakeGCMCipher([]byte(encKey))
+		if err != nil {
+			util.Logger.Panic(err)
+		}
+	} else {
+		util.Logger.Warn("Using unencrypted connection")
 	}
 
 	instance := &Client{
 		addr,
 		handler,
-		gcm,
+		cipher,
 	}
 	return instance
 }
@@ -44,16 +50,23 @@ func (c Client) SendEvent(msg model.ClipboardUpdated) error {
 	encoder := json.NewEncoder(w)
 	encoder.Encode(msg)
 
-	nonce := make([]byte, c.cipher.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		util.Logger.Panic(err)
-	}
+	if c.cipher != nil {
+		nonce := make([]byte, c.cipher.NonceSize())
+		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+			util.Logger.Panic(err)
+		}
 
-	ciphertext := c.cipher.Seal(nil, nonce, w.Bytes(), nil)
+		ciphertext := c.cipher.Seal(nil, nonce, w.Bytes(), nil)
 
-	_, err = conn.Write(append(nonce, ciphertext...))
-	if err != nil {
-		return err
+		_, err = conn.Write(append(nonce, ciphertext...))
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = conn.Write(w.Bytes())
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

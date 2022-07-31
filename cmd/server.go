@@ -54,11 +54,13 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetInt("port")
+		secret, _ := cmd.Flags().GetString("secret")
+
 		addr := net.UDPAddr{
 			IP:   net.IPv4(239, 255, 90, 90),
 			Port: port,
 		}
-		server := n.NewServer(addr, PrintMessage)
+		server := n.NewServer(addr, secret, PrintMessage)
 		util.Logger.Infof("Starting server, address=%s:%d, hostname=%s", addr.IP, addr.Port, hostname)
 		server.Listen()
 	},
