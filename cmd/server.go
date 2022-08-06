@@ -1,6 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2022 Adrian Rumpold <a.rumpold@gmail.com>
 */
 package cmd
 
@@ -67,5 +66,5 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	rootCmd.AddCommand(serverCmd)
+	RootCmd.AddCommand(serverCmd)
 }
