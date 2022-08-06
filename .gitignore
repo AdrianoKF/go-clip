@@ -41,3 +41,5 @@ go.work
 
 # Compiled binary
 go-clip
+
+dist/
