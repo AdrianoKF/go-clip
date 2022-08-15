@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -26,7 +25,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		util.Logger.Info("client starting")
 
 		addr := net.UDPAddr{
@@ -36,29 +35,33 @@ to quickly create a Cobra application.`,
 		client := n.NewClient(addr, nil)
 
 		util.Logger.Info("Watching for clipboard events")
-		ch := clipboard.Watch(context.TODO(), clipboard.FmtText)
-		for data := range ch {
-			util.Logger.Info("Received clipboard event: ", data)
-			bytes := []byte(data)
+		chText := clipboard.Watch(context.TODO(), clipboard.FmtText)
+		chPng := clipboard.Watch(context.TODO(), clipboard.FmtImage)
 
-			client.SendEvent(model.ClipboardUpdated{
-				Content:     bytes,
-				ContentType: http.DetectContentType(bytes),
-			})
+		for {
+			select {
+			case data := <-chText:
+				util.Logger.Info("Received clipboard text event: ", data)
+				bytes := []byte(data)
+
+				client.SendEvent(model.ClipboardUpdated{
+					Content:     bytes,
+					ContentType: http.DetectContentType(bytes),
+				})
+
+			case data := <-chPng:
+				util.Logger.Info("Received clipboard image event")
+				bytes := []byte(data)
+
+				client.SendEvent(model.ClipboardUpdated{
+					Content:     bytes,
+					ContentType: "image/png",
+				})
+			}
 		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(clientCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// clientCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// clientCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
