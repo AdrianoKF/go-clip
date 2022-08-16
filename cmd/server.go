@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -27,10 +26,10 @@ func PrintMessage(_ *net.UDPAddr, _ int, buf []byte) {
 	if strings.HasPrefix(ev.ContentType, "text/") {
 		util.Logger.Info(string(ev.Content))
 		clipboard.Write(clipboard.FmtText, ev.Content)
-	} else {
+	} else if strings.HasPrefix(ev.ContentType, "image/") {
 		util.Logger.Info(ev)
+		clipboard.Write(clipboard.FmtImage, ev.Content)
 	}
-
 }
 
 // serverCmd represents the server command
